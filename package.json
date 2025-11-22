@@ -2,7 +2,6 @@
   "name": "an-furnish",
   "version": "1.0.0",
   "description": "AN Furnish Web Platform",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
