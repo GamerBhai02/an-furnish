@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { getDesignRequests, updateOrderStatus, getCategories, createCategory, deleteCategory, getProducts, createProduct, deleteProduct, loginAdmin, isAuthenticated as checkAuth, logoutAdmin, setupAdmin } from '../services/db';
+import { getDesignRequests, updateOrderStatus, getCategories, createCategory, deleteCategory, getProducts, createProduct, deleteProduct, loginAdmin, isAuthenticated as checkAuth, logoutAdmin } from '../services/db';
 import { DesignRequest, OrderStatus, Category, Product } from '../types';
+import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../constants';
 import Button from '../components/Button';
-import { RefreshCw, Check, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, ShieldAlert } from 'lucide-react';
+import { RefreshCw, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, Database } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSetupMode, setIsSetupMode] = useState(false);
   const [authError, setAuthError] = useState('');
   
   const [activeTab, setActiveTab] = useState<'orders' | 'categories' | 'products'>('orders');
@@ -32,10 +32,9 @@ const Admin: React.FC = () => {
   });
 
   useEffect(() => {
-    // Check if already logged in via token
-    if (checkAuth()) {
-      setIsAuthenticated(true);
-    }
+    checkAuth().then(user => {
+      if (user) setIsAuthenticated(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -51,34 +50,46 @@ const Admin: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
-    const success = await loginAdmin(username, password);
+    const success = await loginAdmin(email, password);
     if (success) {
       setIsAuthenticated(true);
     } else {
-      setAuthError('Invalid credentials or server error');
+      setAuthError('Invalid credentials or connection error');
     }
   };
 
-  const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError('');
-    const msg = await setupAdmin(username, password);
-    if (msg.includes('success')) {
-       alert('Admin created! You can now login.');
-       setIsSetupMode(false);
-    } else {
-      setAuthError(msg);
-    }
-  };
-
-  const handleLogout = () => {
-    logoutAdmin();
+  const handleLogout = async () => {
+    await logoutAdmin();
     setIsAuthenticated(false);
-    setUsername('');
+    setEmail('');
     setPassword('');
   };
 
-  // ... (Rest of the handlers same as before) ...
+  const handleSeedData = async () => {
+    if (!confirm("This will populate the database with initial data if empty. Continue?")) return;
+    
+    // Seed Categories
+    if (categories.length === 0) {
+      for (const cat of INITIAL_CATEGORIES) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...data } = cat;
+        await createCategory(data);
+      }
+    }
+
+    // Seed Products
+    if (products.length === 0) {
+      for (const prod of INITIAL_PRODUCTS) {
+         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...data } = prod;
+        await createProduct(data);
+      }
+    }
+    
+    alert("Seeding complete!");
+    loadData();
+  };
+
   const handleStatusUpdate = async (status: OrderStatus) => {
     if (!selectedLead) return;
     await updateOrderStatus(selectedLead.id, status, noteInput);
@@ -138,23 +149,25 @@ const Admin: React.FC = () => {
         <div className="bg-white dark:bg-stone-800 p-8 rounded-xl shadow-lg w-full max-w-sm">
           <div className="text-center mb-6">
             <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold mx-auto mb-2">AN</div>
-            <h2 className="text-xl font-bold text-stone-900 dark:text-white">{isSetupMode ? 'Create Admin' : 'Admin Login'}</h2>
+            <h2 className="text-xl font-bold text-stone-900 dark:text-white">Admin Login</h2>
+            <p className="text-xs text-stone-500 mt-2">Access AN Furnish Dashboard</p>
           </div>
 
-          <form onSubmit={isSetupMode ? handleSetup : handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             {authError && (
               <div className="bg-red-50 text-red-600 p-3 rounded text-sm text-center">
                 {authError}
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium mb-1">Username</label>
+              <label className="block text-sm font-medium mb-1">Email</label>
               <input 
-                type="text" 
+                type="email" 
                 required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-2 border rounded dark:bg-stone-700 dark:border-stone-600"
+                placeholder="admin@example.com"
               />
             </div>
             <div>
@@ -167,14 +180,8 @@ const Admin: React.FC = () => {
                 className="w-full p-2 border rounded dark:bg-stone-700 dark:border-stone-600"
               />
             </div>
-            <Button fullWidth type="submit">{isSetupMode ? 'Create Account' : 'Login'}</Button>
+            <Button fullWidth type="submit">Login</Button>
           </form>
-          
-          <div className="mt-4 text-center text-xs text-stone-500">
-             <button onClick={() => setIsSetupMode(!isSetupMode)} className="hover:underline">
-               {isSetupMode ? 'Back to Login' : 'First time? Setup Admin'}
-             </button>
-          </div>
         </div>
       </div>
     );
@@ -189,6 +196,9 @@ const Admin: React.FC = () => {
           <h1 className="font-bold text-lg text-stone-900 dark:text-white hidden sm:block">Admin Panel</h1>
         </div>
         <div className="flex gap-2">
+           <Button size="sm" variant="outline" onClick={handleSeedData} title="Populate initial data if empty">
+              <Database size={16} className="sm:mr-1" /> <span className="hidden sm:inline">Seed DB</span>
+           </Button>
           <Button size="sm" variant="outline" onClick={loadData}><RefreshCw size={16} className="sm:mr-1"/> <span className="hidden sm:inline">Refresh</span></Button>
           <Button size="sm" variant="secondary" onClick={handleLogout}><LogOut size={16} className="sm:mr-1"/> <span className="hidden sm:inline">Logout</span></Button>
         </div>
@@ -263,6 +273,11 @@ const Admin: React.FC = () => {
                         <td className="px-6 py-4 text-right"><Button size="sm" variant="ghost">View</Button></td>
                       </tr>
                     ))}
+                    {leads.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-10 text-center text-stone-500">No orders found</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
                </div>
@@ -348,7 +363,7 @@ const Admin: React.FC = () => {
                    <div className="bg-stone-50 dark:bg-stone-900 p-4 rounded-lg space-y-1">
                       <p><span className="font-medium">Type:</span> {selectedLead.flowType}</p>
                       <p><span className="font-medium">Budget:</span> {selectedLead.budget}</p>
-                      {selectedLead.specifications.style && <p><span className="font-medium">Style:</span> {selectedLead.specifications.style}</p>}
+                      {selectedLead.specifications?.style && <p><span className="font-medium">Style:</span> {selectedLead.specifications.style}</p>}
                    </div>
                 </div>
               </div>
