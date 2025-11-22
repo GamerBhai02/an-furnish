@@ -101,9 +101,13 @@ const CustomDesign: React.FC = () => {
       const result = await createDesignRequest(requestData);
       setGeneratedOrderId(result.orderId);
       setIsSuccess(true);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to submit design", e);
-      alert("Something went wrong. Please try again.");
+      if (e.code === 'permission-denied') {
+        alert("Database Permission Error: The server rejected the request.\n\nAdmin: Please go to Firebase Console -> Firestore -> Rules and ensure you allow 'create' access for the 'orders' collection.");
+      } else {
+        alert("Something went wrong: " + e.message + "\nPlease try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
