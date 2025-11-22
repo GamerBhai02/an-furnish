@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDesignRequests, updateOrderStatus, getCategories, createCategory, deleteCategory, getProducts, createProduct, deleteProduct, loginAdmin, isAuthenticated as checkAuth, logoutAdmin } from '../services/db';
 import { DesignRequest, OrderStatus, Category, Product } from '../types';
 import Button from '../components/Button';
-import { RefreshCw, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, AlertTriangle } from 'lucide-react';
+import { RefreshCw, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
@@ -413,6 +413,16 @@ const Admin: React.FC = () => {
                    </div>
                 </div>
               </div>
+
+              {/* Attachment View */}
+              {selectedLead.attachment && (
+                <div>
+                  <h4 className="font-bold text-xs uppercase text-stone-500 mb-2 flex items-center gap-1"><ImageIcon size={12}/> Reference Image</h4>
+                  <div className="bg-stone-50 dark:bg-stone-900 p-2 rounded-lg inline-block">
+                     <img src={selectedLead.attachment} alt="Attachment" className="max-h-48 rounded border border-stone-200 dark:border-stone-700" />
+                  </div>
+                </div>
+              )}
 
               <div>
                  <h4 className="font-bold text-xs uppercase text-stone-500 mb-2">Full Specifications</h4>

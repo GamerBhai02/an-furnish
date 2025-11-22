@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, CheckCircle, Upload, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Upload, Info, X, Image as ImageIcon } from 'lucide-react';
 import { getProductById, createDesignRequest, getCategories } from '../services/db';
 import { FlowType, Product, Category } from '../types';
 import Button from '../components/Button';
@@ -32,7 +32,8 @@ const CustomDesign: React.FC = () => {
       email: '',
       city: '',
     },
-    consent: true
+    consent: true,
+    attachment: '' as string // Base64 string
   });
 
   useEffect(() => {
@@ -75,13 +76,49 @@ const CustomDesign: React.FC = () => {
     }));
   };
 
+  // Handle Image Upload via Base64 (Free, no Storage bucket needed)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Limit size to 400KB to prevent Firestore Document Limit (1MB) issues
+    if (file.size > 400 * 1024) {
+      alert("Image is too large. Please upload an image smaller than 400KB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setFormData(prev => ({ ...prev, attachment: result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, attachment: '' }));
+  };
+
+  // Helper to replace undefined with null recursively
+  const sanitizePayload = (obj: any): any => {
+    if (Array.isArray(obj)) {
+      return obj.map(v => sanitizePayload(v));
+    } else if (obj !== null && typeof obj === 'object') {
+      return Object.keys(obj).reduce((acc, key) => {
+        const value = obj[key];
+        acc[key] = value === undefined ? null : sanitizePayload(value);
+        return acc;
+      }, {} as any);
+    }
+    return obj;
+  };
+
   const handleSubmit = async () => {
     if (!formData.contact.name || !formData.contact.phone || !formData.consent) return;
     
     setIsSubmitting(true);
     
-    // FIX: Firestore does not support 'undefined'. We must use 'null' for optional fields.
-    const requestData = {
+    const rawData = {
       flowType: productId ? FlowType.PREDEFINED : FlowType.CUSTOM,
       productId: productId || null, 
       productName: prefilledProduct?.title || null,
@@ -95,11 +132,15 @@ const CustomDesign: React.FC = () => {
       },
       contact: formData.contact,
       budget: formData.budget,
-      timeline: formData.timeline
+      timeline: formData.timeline,
+      attachment: formData.attachment || null
     };
 
+    // Clean data to ensure no 'undefined' values exist
+    const cleanData = sanitizePayload(rawData);
+
     try {
-      const result = await createDesignRequest(requestData);
+      const result = await createDesignRequest(cleanData);
       setGeneratedOrderId(result.orderId);
       setIsSuccess(true);
     } catch (e: any) {
@@ -166,7 +207,7 @@ const CustomDesign: React.FC = () => {
               <select 
                 value={formData.category}
                 onChange={(e) => handleChange('category', e.target.value)}
-                className="w-full rounded-lg border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-700 p-2.5 focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-700 p-2.5 focus:ring-2 focus:ring-primary-500 dark:text-white"
               >
                 <option value="">Select Category</option>
                 {categories.map(c => <option key={c.id} value={c.slug}>{c.name}</option>)}
@@ -184,7 +225,7 @@ const CustomDesign: React.FC = () => {
                     className={`p-3 rounded-lg border text-sm font-medium transition-all ${
                       formData.style === style 
                         ? 'border-primary-600 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300' 
-                        : 'border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500'
+                        : 'border-stone-200 dark:border-stone-600 hover:border-stone-300 dark:hover:border-stone-500 dark:text-stone-300'
                     }`}
                   >
                     {style}
@@ -207,17 +248,17 @@ const CustomDesign: React.FC = () => {
                 <input 
                   type="number" placeholder="Width" 
                   value={formData.dimensions.w} onChange={(e) => handleDimensionChange('w', e.target.value)}
-                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
                 <input 
                   type="number" placeholder="Depth"
                   value={formData.dimensions.d} onChange={(e) => handleDimensionChange('d', e.target.value)}
-                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
                 <input 
                   type="number" placeholder="Height"
                   value={formData.dimensions.h} onChange={(e) => handleDimensionChange('h', e.target.value)}
-                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
               </div>
             </div>
@@ -228,17 +269,39 @@ const CustomDesign: React.FC = () => {
                 value={formData.notes}
                 onChange={(e) => handleChange('notes', e.target.value)}
                 placeholder="E.g., Teak wood frame with emerald green velvet fabric..."
-                className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5 focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5 focus:ring-2 focus:ring-primary-500"
               ></textarea>
             </div>
              <div>
-              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">Upload Reference Image (Optional)</label>
-              <div className="border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-lg p-6 flex flex-col items-center text-center text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors">
-                <Upload size={24} className="mb-2"/>
-                <span className="text-sm">Click to upload or drag and drop</span>
-                <input type="file" className="hidden" /> 
-                {/* Note: File upload visualization omitted for MVP code simplicity, assume file input works */}
-              </div>
+              <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">Reference Image (Optional)</label>
+              
+              {!formData.attachment ? (
+                <label className="border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-lg p-6 flex flex-col items-center text-center text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700/50 transition-colors cursor-pointer">
+                  <Upload size={24} className="mb-2"/>
+                  <span className="text-sm font-medium">Click to upload image</span>
+                  <span className="text-xs opacity-70 mt-1">Max 400KB (Screenshots/Reference)</span>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  /> 
+                </label>
+              ) : (
+                <div className="relative inline-block">
+                  <img 
+                    src={formData.attachment} 
+                    alt="Reference" 
+                    className="h-32 w-auto rounded-lg border border-stone-200 dark:border-stone-600 shadow-sm"
+                  />
+                  <button 
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -253,7 +316,7 @@ const CustomDesign: React.FC = () => {
                 value={formData.budget}
                 onChange={(e) => handleChange('budget', e.target.value)}
                 placeholder="e.g. ₹20,000 - ₹30,000"
-                className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
               />
             </div>
             <div>
@@ -286,7 +349,7 @@ const CustomDesign: React.FC = () => {
                   type="text" required
                   value={formData.contact.name}
                   onChange={(e) => handleContactChange('name', e.target.value)}
-                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
               </div>
               <div>
@@ -295,7 +358,7 @@ const CustomDesign: React.FC = () => {
                   type="tel" required
                   value={formData.contact.phone}
                   onChange={(e) => handleContactChange('phone', e.target.value)}
-                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
               </div>
               <div>
@@ -304,7 +367,7 @@ const CustomDesign: React.FC = () => {
                   type="email"
                   value={formData.contact.email}
                   onChange={(e) => handleContactChange('email', e.target.value)}
-                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
               </div>
               <div>
@@ -313,15 +376,20 @@ const CustomDesign: React.FC = () => {
                   type="text"
                   value={formData.contact.city}
                   onChange={(e) => handleContactChange('city', e.target.value)}
-                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 p-2.5"
+                  className="w-full rounded-lg border-stone-300 dark:border-stone-600 dark:bg-stone-700 dark:text-white p-2.5"
                 />
               </div>
             </div>
             
             <div className="bg-stone-50 dark:bg-stone-900 p-4 rounded-lg text-sm border border-stone-100 dark:border-stone-700">
-               <h4 className="font-bold mb-2">Request Summary</h4>
-               <p>{formData.category || 'Custom'} {formData.style ? `- ${formData.style}` : ''}</p>
+               <h4 className="font-bold mb-2 text-stone-900 dark:text-white">Request Summary</h4>
+               <p className="text-stone-700 dark:text-stone-300">{formData.category || 'Custom'} {formData.style ? `- ${formData.style}` : ''}</p>
                <p className="text-stone-500">Approx: {formData.dimensions.w || '?'}x{formData.dimensions.d || '?'}x{formData.dimensions.h || '?'} cm</p>
+               {formData.attachment && (
+                 <div className="mt-2 flex items-center gap-2 text-green-600">
+                   <ImageIcon size={14} /> Image attached
+                 </div>
+               )}
             </div>
 
             <label className="flex items-start gap-3 cursor-pointer">

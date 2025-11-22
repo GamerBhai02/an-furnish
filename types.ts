@@ -46,8 +46,8 @@ export interface DesignRequest {
   id: string; // Internal ID
   orderId: string; // Human readable AN-YYYY-XXXX
   flowType: FlowType;
-  productId?: string; // If predefined
-  productName?: string;
+  productId?: string | null; // If predefined
+  productName?: string | null;
   category: string;
   specifications: Record<string, any>; // Flexible for wizard answers
   contact: ContactDetails;
@@ -57,6 +57,7 @@ export interface DesignRequest {
   createdAt: string; // ISO date
   updatedAt: string;
   notes: string[]; // Admin notes
+  attachment?: string | null; // Base64 string of the image
 }
 
 export interface ChatMessage {
