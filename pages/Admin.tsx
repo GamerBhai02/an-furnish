@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDesignRequests, updateOrderStatus, getCategories, createCategory, deleteCategory, getProducts, createProduct, deleteProduct, loginAdmin, isAuthenticated as checkAuth, logoutAdmin } from '../services/db';
 import { DesignRequest, OrderStatus, Category, Product } from '../types';
-import { INITIAL_CATEGORIES, INITIAL_PRODUCTS } from '../constants';
 import Button from '../components/Button';
-import { RefreshCw, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, Database, AlertTriangle } from 'lucide-react';
+import { RefreshCw, X, Plus, Trash2, Layers, ShoppingBag, LayoutGrid, LogOut, AlertTriangle } from 'lucide-react';
 
 const Admin: React.FC = () => {
   const navigate = useNavigate();
@@ -47,9 +46,14 @@ const Admin: React.FC = () => {
   const loadData = async () => {
     setOpError('');
     try {
-      setLeads(await getDesignRequests());
-      setCategories(await getCategories());
-      setProducts(await getProducts());
+      const [leadsData, catsData, prodsData] = await Promise.all([
+        getDesignRequests(),
+        getCategories(),
+        getProducts()
+      ]);
+      setLeads(leadsData);
+      setCategories(catsData);
+      setProducts(prodsData);
     } catch (error: any) {
       console.error("Data load error:", error);
       if (error.code === 'permission-denied') {
@@ -78,40 +82,6 @@ const Admin: React.FC = () => {
     setPassword('');
   };
 
-  const handleSeedData = async () => {
-    if (!confirm("This will populate the database with initial data if empty. Continue?")) return;
-    setOpError('');
-    try {
-      // Seed Categories
-      if (categories.length === 0) {
-        for (const cat of INITIAL_CATEGORIES) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id, ...data } = cat;
-          await createCategory(data);
-        }
-      }
-
-      // Seed Products
-      if (products.length === 0) {
-        for (const prod of INITIAL_PRODUCTS) {
-           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { id, ...data } = prod;
-          await createProduct(data);
-        }
-      }
-      
-      alert("Seeding complete!");
-      loadData();
-    } catch (error: any) {
-      console.error("Seeding error", error);
-      if (error.code === 'permission-denied') {
-        setOpError("Permission Denied: Check Firestore Rules (allow write: if request.auth != null).");
-      } else {
-        setOpError("Failed to seed data: " + error.message);
-      }
-    }
-  };
-
   const handleStatusUpdate = async (status: OrderStatus) => {
     if (!selectedLead) return;
     try {
@@ -130,7 +100,7 @@ const Admin: React.FC = () => {
     setOpError('');
     
     try {
-      const img = newCategory.image || 'https://picsum.photos/400/300?random=' + Math.floor(Math.random()*100);
+      const img = newCategory.image || 'https://via.placeholder.com/400x300?text=No+Image';
       await createCategory({ ...newCategory, image: img });
       setNewCategory({ name: '', slug: '', image: '' });
       setIsAddCategoryModalOpen(false);
@@ -168,7 +138,7 @@ const Admin: React.FC = () => {
         description: newProduct.description || 'Contact details',
         materials: newProduct.materials ? newProduct.materials.split(',').map(s => s.trim()) : ['Wood'],
         dimensions: { w: Number(newProduct.width)||0, d: Number(newProduct.depth)||0, h: Number(newProduct.height)||0 },
-        image: newProduct.image || 'https://picsum.photos/600/400?random=' + Math.floor(Math.random()*1000),
+        image: newProduct.image || 'https://via.placeholder.com/600x400?text=No+Image',
         priceRange: newProduct.priceRange || 'On Request',
         tags: newProduct.tags ? newProduct.tags.split(',').map(s => s.trim()) : [],
         published: true
@@ -199,16 +169,15 @@ const Admin: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-stone-900">
+      <div className="min-h-screen flex items-center justify-center bg-stone-100 dark:bg-stone-900 relative">
         <div className="bg-white dark:bg-stone-800 p-8 rounded-xl shadow-lg w-full max-w-sm relative">
-          <button 
+           <button 
             onClick={() => navigate('/')}
             className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
             title="Close and go back to home"
           >
             <X size={20} />
           </button>
-
           <div className="text-center mb-6">
             <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold mx-auto mb-2">AN</div>
             <h2 className="text-xl font-bold text-stone-900 dark:text-white">Admin Login</h2>
@@ -258,9 +227,6 @@ const Admin: React.FC = () => {
           <h1 className="font-bold text-lg text-stone-900 dark:text-white hidden sm:block">Admin Panel</h1>
         </div>
         <div className="flex gap-2">
-           <Button size="sm" variant="outline" onClick={handleSeedData} title="Populate initial data if empty">
-              <Database size={16} className="sm:mr-1" /> <span className="hidden sm:inline">Seed DB</span>
-           </Button>
           <Button size="sm" variant="outline" onClick={loadData}><RefreshCw size={16} className="sm:mr-1"/> <span className="hidden sm:inline">Refresh</span></Button>
           <Button size="sm" variant="secondary" onClick={handleLogout}><LogOut size={16} className="sm:mr-1"/> <span className="hidden sm:inline">Logout</span></Button>
         </div>
@@ -364,6 +330,9 @@ const Admin: React.FC = () => {
              <div className="flex justify-end mb-4">
                <Button onClick={() => setIsAddCategoryModalOpen(true)}><Plus size={18} className="mr-2"/> Add Category</Button>
              </div>
+             {categories.length === 0 && (
+               <div className="text-center py-10 text-stone-500 dark:text-stone-400">No categories found. Add one to get started.</div>
+             )}
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {categories.map(cat => (
                   <div key={cat.id} className="group relative bg-white dark:bg-stone-800 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700">
@@ -390,6 +359,9 @@ const Admin: React.FC = () => {
              <div className="flex justify-end mb-4">
                <Button onClick={() => setIsAddProductModalOpen(true)}><Plus size={18} className="mr-2"/> Add Product</Button>
              </div>
+             {products.length === 0 && (
+               <div className="text-center py-10 text-stone-500 dark:text-stone-400">No products found. Add one to get started.</div>
+             )}
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map(p => (
                   <div key={p.id} className="bg-white dark:bg-stone-800 rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 flex flex-col">

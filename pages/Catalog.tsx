@@ -37,53 +37,47 @@ const Catalog: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-8">
         
         {/* Mobile Filter Toggle */}
-        <button 
-          className="md:hidden flex items-center gap-2 font-medium text-stone-600 dark:text-stone-300 mb-4"
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-        >
-          <Filter size={20} /> Filter Products
-        </button>
+        {products.length > 0 && (
+          <button 
+            className="md:hidden flex items-center gap-2 font-medium text-stone-600 dark:text-stone-300 mb-4"
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+          >
+            <Filter size={20} /> Filter Products
+          </button>
+        )}
 
         {/* Sidebar Filters */}
         <aside className={`md:w-64 flex-shrink-0 space-y-8 ${isFilterOpen ? 'block' : 'hidden md:block'}`}>
           <div>
             <h3 className="font-bold text-stone-900 dark:text-white mb-4">Categories</h3>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="radio" 
-                  name="category" 
-                  checked={selectedCategory === 'all'} 
-                  onChange={() => setSelectedCategory('all')}
-                  className="text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-stone-600 dark:text-stone-400">All Products</span>
-              </label>
-              {categories.map(cat => (
-                <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+            {categories.length === 0 ? (
+              <p className="text-xs text-stone-500">No categories available.</p>
+            ) : (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="radio" 
                     name="category" 
-                    checked={selectedCategory === cat.slug} 
-                    onChange={() => setSelectedCategory(cat.slug)}
+                    checked={selectedCategory === 'all'} 
+                    onChange={() => setSelectedCategory('all')}
                     className="text-primary-600 focus:ring-primary-500"
                   />
-                  <span className="text-stone-600 dark:text-stone-400">{cat.name}</span>
+                  <span className="text-stone-600 dark:text-stone-400">All Products</span>
                 </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-bold text-stone-900 dark:text-white mb-4">Price Range</h3>
-            {/* Range slider placeholder */}
-            <div className="h-1 bg-stone-200 dark:bg-stone-700 rounded-full overflow-hidden">
-              <div className="w-1/2 h-full bg-primary-600"></div>
-            </div>
-            <div className="flex justify-between text-xs text-stone-500 mt-2">
-              <span>₹10k</span>
-              <span>₹100k+</span>
-            </div>
+                {categories.map(cat => (
+                  <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="category" 
+                      checked={selectedCategory === cat.slug} 
+                      onChange={() => setSelectedCategory(cat.slug)}
+                      className="text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-stone-600 dark:text-stone-400">{cat.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
 
@@ -106,13 +100,16 @@ const Catalog: React.FC = () => {
             </div>
           ) : (
             <div className="text-center py-20 bg-stone-50 dark:bg-stone-800 rounded-xl">
-              <p className="text-stone-500">No products found in this category.</p>
-              <button 
-                onClick={() => setSelectedCategory('all')}
-                className="mt-4 text-primary-600 hover:underline"
-              >
-                Clear Filters
-              </button>
+              <p className="text-stone-500 mb-2">No products found.</p>
+              <p className="text-xs text-stone-400">Check back later or contact us for custom designs.</p>
+              {selectedCategory !== 'all' && (
+                <button 
+                  onClick={() => setSelectedCategory('all')}
+                  className="mt-4 text-primary-600 hover:underline"
+                >
+                  View All Categories
+                </button>
+              )}
             </div>
           )}
         </div>

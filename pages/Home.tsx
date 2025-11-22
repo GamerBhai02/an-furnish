@@ -7,11 +7,16 @@ import Button from '../components/Button';
 
 const Home: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadCategories = async () => {
-      const data = await getCategories();
-      setCategories(data);
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } finally {
+        setIsLoading(false);
+      }
     };
     loadCategories();
   }, []);
@@ -62,36 +67,44 @@ const Home: React.FC = () => {
             <h2 className="text-2xl font-bold text-stone-900 dark:text-white">Shop by Category</h2>
             <p className="text-stone-500 dark:text-stone-400 mt-1">Find the perfect piece for every room</p>
           </div>
-          <Link to="/catalog" className="hidden sm:flex items-center text-primary-600 font-medium hover:underline">
-            View All <ArrowRight size={16} className="ml-1" />
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map(cat => (
-            <Link 
-              key={cat.id} 
-              to={`/catalog?category=${cat.slug}`}
-              className="group relative aspect-square overflow-hidden rounded-xl bg-stone-200"
-            >
-              <img 
-                src={cat.image} 
-                alt={cat.name} 
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                <h3 className="text-white font-bold text-xl tracking-wide border-b-2 border-transparent group-hover:border-white transition-all">
-                  {cat.name}
-                </h3>
-              </div>
+          {categories.length > 0 && (
+            <Link to="/catalog" className="hidden sm:flex items-center text-primary-600 font-medium hover:underline">
+              View All <ArrowRight size={16} className="ml-1" />
             </Link>
-          ))}
-          {categories.length === 0 && (
-            <div className="col-span-full text-center text-stone-500 py-10 bg-stone-50 dark:bg-stone-800 rounded-xl">
-              Loading categories...
-            </div>
           )}
         </div>
+
+        {isLoading ? (
+          <div className="text-center py-10 text-stone-500">Loading categories...</div>
+        ) : categories.length === 0 ? (
+           <div className="text-center py-16 bg-stone-50 dark:bg-stone-800 rounded-xl border border-dashed border-stone-300 dark:border-stone-700">
+              <p className="text-stone-500 dark:text-stone-400 mb-4">Our catalog is currently being updated with fresh designs.</p>
+              <Link to="/custom-design">
+                <Button variant="outline">Start a Custom Design</Button>
+              </Link>
+           </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {categories.map(cat => (
+              <Link 
+                key={cat.id} 
+                to={`/catalog?category=${cat.slug}`}
+                className="group relative aspect-square overflow-hidden rounded-xl bg-stone-200"
+              >
+                <img 
+                  src={cat.image} 
+                  alt={cat.name} 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                  <h3 className="text-white font-bold text-xl tracking-wide border-b-2 border-transparent group-hover:border-white transition-all">
+                    {cat.name}
+                  </h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Features / Value Prop */}
