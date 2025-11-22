@@ -141,9 +141,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div>
               <h4 className="font-semibold text-stone-900 dark:text-white mb-4">Contact</h4>
               <ul className="space-y-2 text-stone-600 dark:text-stone-400 text-sm">
-                <li>+91 98765 43210</li>
-                <li>hello@anfurnish.com</li>
-                <li>Bangalore, India</li>
+                <li>+91 94488 52434</li>
+                <li>an-furnish@gmail.com</li>
+                <li>Bengaluru, Karnataka, India</li>
               </ul>
             </div>
           </div>
