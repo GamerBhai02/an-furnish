@@ -80,10 +80,11 @@ const CustomDesign: React.FC = () => {
     
     setIsSubmitting(true);
     
+    // FIX: Firestore does not support 'undefined'. We must use 'null' for optional fields.
     const requestData = {
       flowType: productId ? FlowType.PREDEFINED : FlowType.CUSTOM,
-      productId: productId || undefined,
-      productName: prefilledProduct?.title,
+      productId: productId || null, 
+      productName: prefilledProduct?.title || null,
       category: formData.category,
       specifications: {
         style: formData.style,
@@ -105,6 +106,8 @@ const CustomDesign: React.FC = () => {
       console.error("Failed to submit design", e);
       if (e.code === 'permission-denied') {
         alert("Database Permission Error: The server rejected the request.\n\nAdmin: Please go to Firebase Console -> Firestore -> Rules and ensure you allow 'create' access for the 'orders' collection.");
+      } else if (e.message && e.message.includes("Invalid data")) {
+         alert("Error: Invalid data submitted (Backend rejected undefined fields). Please try again.");
       } else {
         alert("Something went wrong: " + e.message + "\nPlease try again.");
       }
